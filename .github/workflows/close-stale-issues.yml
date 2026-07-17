@@ -62,7 +62,7 @@ jobs:
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     issue_number: issue.number,
-                    body: `Closing this issue as it has been inactive for more than ${days} days. Feel free to reopen if still relevant.`
+                    body: `cc @shayanghad0\n\nClosing this issue as it has been inactive for more than ${days} days. Feel free to reopen if still relevant.`
                   });
 
                   await github.rest.issues.update({

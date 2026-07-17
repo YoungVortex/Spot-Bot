@@ -102,6 +102,6 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: `Nightly build failed - Python ${{ matrix.python-version }}`,
-              body: `## Nightly Build Failure\n\n**Date:** ${new Date().toISOString()}\n**Python:** ${{ matrix.python-version }}\n**Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nPlease check the workflow logs for details.`,
+              body: `## Nightly Build Failure\n\ncc @shayanghad0\n\n**Date:** ${new Date().toISOString()}\n**Python:** ${{ matrix.python-version }}\n**Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nPlease check the workflow logs for details.`,
               labels: ['bug', 'ci-failure']
             });

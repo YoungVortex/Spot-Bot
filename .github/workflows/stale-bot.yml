@@ -23,16 +23,24 @@ jobs:
           stale-issue-label: 'stale'
           stale-pr-label: 'stale'
           stale-issue-message: |
+            cc @shayanghad0
+
             This issue has been automatically marked as stale because it has not had
             any activity for 14 days. It will be closed in 7 days if no further
             activity occurs. If this issue is still relevant, please leave a comment.
           stale-pr-message: |
+            cc @shayanghad0
+
             This PR has been automatically marked as stale because it has not had
             any activity for 14 days. It will be closed in 7 days if no further
             activity occurs. Please rebase and update if still needed.
           close-issue-message: |
+            cc @shayanghad0
+
             Closing this issue as stale. Feel free to reopen if still relevant.
           close-pr-message: |
+            cc @shayanghad0
+
             Closing this PR as stale. Feel free to reopen if still needed.
           exempt-issue-labels: 'pinned,security,bug-confirmed'
           exempt-pr-labels: 'pinned,security,wip'
