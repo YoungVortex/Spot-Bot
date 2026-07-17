@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """
 test_connection.py - Test Bit24 API credentials from .env file.
+With playful console animations.
 Usage: python test_connection.py
 """
 
 import os
 import sys
+import time
+import itertools
 import requests
 from dotenv import load_dotenv
 
@@ -14,6 +17,19 @@ load_dotenv()
 
 API_KEY = os.getenv("BIT24_API_KEY")
 SECRET_KEY = os.getenv("BIT24_SECRET_KEY")  # not used for GET, but we check it exists
+
+
+def spinner_animation(duration_sec, text="Connecting"):
+    """Show a spinning loader for a given duration (or until interrupted)."""
+    frames = ["|", "/", "-", "\\"]
+    cycle = itertools.cycle(frames)
+    end_time = time.time() + duration_sec
+    while time.time() < end_time:
+        sys.stdout.write(f"\r{text} {next(cycle)}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write("\r" + " " * (len(text) + 4) + "\r")  # clear line
+
 
 def test_connection():
     """Test if API key works by calling the assets endpoint."""
@@ -28,6 +44,14 @@ def test_connection():
         "Accept": "application/json",
         "X-BIT24-APIKEY": API_KEY,
     }
+
+    # Start a spinner in parallel? We'll just show one before the request.
+    # To make it look lively, we flash a quick "Connecting..." animation
+    for _ in range(5):  # 0.5 second animation
+        sys.stdout.write("\r🔗 Connecting to Bit24 " + "|/-\\"[ _ % 4 ])
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write("\r" + " " * 30 + "\r")  # clear
 
     try:
         response = requests.get(url, headers=headers, timeout=10)
@@ -46,9 +70,15 @@ def test_connection():
         print(f"❌ API error: {error_msg}")
         return False
 
-    # If we reach here, connection is successful
-    print("Work And Successfull Check")
+    # Success! Show a little animated celebration
+    sys.stdout.write("✅ Work")
+    for _ in range(4):
+        sys.stdout.write(".")
+        sys.stdout.flush()
+        time.sleep(0.15)
+    print(" And Successfull Check")
     return True
+
 
 if __name__ == "__main__":
     success = test_connection()
