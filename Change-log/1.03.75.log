@@ -1,0 +1,13 @@
+Add a Bit24 Importent code for start coding a bot
+    API : 
+        Setup-token.py : to setup a APItoken on env file
+        Use-token.py : to check a APItoken work or no use env file
+    Price :
+        Check-price.py : This code use env file and check a price each 1 secend
+    Buy and Sell 
+        Buy.py : this code use env file and user can buy a token and check a full balance coin after buy
+        Sell.py : this code use env file and user can sell a token and check a full balance currency after sell
+
+
+Date Start : [7/18/2026]
+Commit Time : 2:55 AM
