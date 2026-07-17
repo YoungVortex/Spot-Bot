@@ -2,6 +2,8 @@ import os
 import hmac
 import hashlib
 import time
+import sys
+import itertools
 from decimal import Decimal, getcontext
 
 import requests
@@ -22,17 +24,42 @@ if not API_KEY or not SECRET_KEY:
 BASE_URL = "https://rest.bit24.cash"
 
 
+# ---------- Animation helpers ----------
+def animated_input(prompt_text, frames=[">._.<", ">__.__<", ">._.<", ">.__.<"], cycles=8, delay=0.08):
+    """Show a playful blinking prompt, then return user input."""
+    spinner = itertools.cycle(frames)
+    sys.stdout.write(prompt_text)
+    sys.stdout.flush()
+    for _ in range(cycles):
+        sys.stdout.write("\r" + prompt_text + next(spinner) + " ")
+        sys.stdout.flush()
+        time.sleep(delay)
+    sys.stdout.write("\r" + prompt_text + ">._.< : ")
+    sys.stdout.flush()
+    return input()
+
+
+def spinner(text, duration=1.0, frames=None):
+    """Display a short spinning loader."""
+    if frames is None:
+        frames = ["|", "/", "-", "\\"]
+    cycle = itertools.cycle(frames)
+    end = time.time() + duration
+    while time.time() < end:
+        sys.stdout.write(f"\r{text} {next(cycle)}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write("\r" + " " * (len(text) + 4) + "\r")  # clear line
+
+
+# ---------- Original helpers (unchanged) ----------
 def format_amount(amount: float) -> str:
     """
     Convert a float to a decimal string without scientific notation.
     Example: 5.2e-06 -> "0.00000520"
     """
-    # Use Decimal to avoid floating point issues and then format
     decimal_value = Decimal(str(amount))
-    # Normalize to remove trailing zeros but keep required precision
-    # We want at least 8 decimal places for crypto, but we'll just format with 10 and strip trailing zeros
     formatted = f"{decimal_value:.10f}"
-    # Remove trailing zeros and decimal point if all zeros after decimal
     formatted = formatted.rstrip('0').rstrip('.')
     if formatted == "":
         formatted = "0"
@@ -129,80 +156,106 @@ def submit_order(base_symbol: str, quote_symbol: str, side: int, order_type: int
     return data["data"]
 
 
+# ---------- Main with animations ----------
 def main():
-    # 1. User inputs
-    symbol = input("Please Input your Symbol (BTC | ADA | ETH | TRX | ... ) : ").strip().upper()
-    quote = input("Please Input your currency (IRT | USDT) : ").strip().upper()
+    # 1. Animated inputs
+    symbol = animated_input(
+        "Please Input your Symbol (BTC | ADA | ETH | TRX | ... ) : "
+    ).strip().upper()
+
+    quote = animated_input(
+        "Please Input your currency (IRT | USDT) : "
+    ).strip().upper()
+
     if quote not in ["IRT", "USDT"]:
-        print("Currency must be IRT or USDT.")
+        print("❌ Currency must be IRT or USDT.")
         return
 
-    # 2. Check if market exists
-    print(f"Checking market {symbol}/{quote}...")
-    if not check_market(symbol, quote):
-        print(f"Market {symbol}/{quote} does not exist.")
-        return
-    print("Market exists.")
-
-    # 3. Get current balance of the coin to sell
+    # 2. Check market with spinner
+    print(f"🔍 Checking market {symbol}/{quote}...")
+    spinner("Checking", duration=0.8)
     try:
+        if not check_market(symbol, quote):
+            print(f"❌ Market {symbol}/{quote} does not exist.")
+            return
+    except Exception as e:
+        print(f"❌ Error checking market: {e}")
+        return
+    print("✅ Market exists.")
+
+    # 3. Get current balance with spinner
+    try:
+        spinner("Fetching balance", duration=0.7)
         balance_str = get_asset_balance(symbol)
         balance = float(balance_str)
     except Exception as e:
-        print(f"Error fetching balance: {e}")
+        print(f"❌ Error fetching balance: {e}")
         return
 
-    print(f"Your current {symbol} balance: {balance_str}")
+    print(f"💰 Your current {symbol} balance: {balance_str}")
 
     if balance <= 0:
-        print(f"You have no {symbol} to sell.")
+        print(f"❌ You have no {symbol} to sell.")
         return
 
-    # 4. Ask how much to sell
-    sell_input = input(f"How much {symbol} do you want to sell? (enter a number or 'all'): ").strip()
+    # 4. Animated sell amount input
+    sell_input = animated_input(
+        f"How much {symbol} do you want to sell? (enter a number or 'all') : ",
+        frames=[">._.<", ">__.__<", ">._.<", ">.__.<"], cycles=8, delay=0.07
+    ).strip()
+
     if sell_input.lower() == "all":
         amount_to_sell = balance
     else:
         try:
             amount_to_sell = float(sell_input)
         except ValueError:
-            print("Invalid amount. Please enter a number or 'all'.")
+            print("❌ Invalid amount. Please enter a number or 'all'.")
             return
         if amount_to_sell <= 0:
-            print("Amount must be positive.")
+            print("❌ Amount must be positive.")
             return
         if amount_to_sell > balance:
-            print(f"You cannot sell more than your balance ({balance_str}).")
+            print(f"❌ You cannot sell more than your balance ({balance_str}).")
             return
 
-    # Format the amount as a decimal string without scientific notation
     amount_str = format_amount(amount_to_sell)
 
-    # 5. Place market sell order
-    print(f"Placing market sell order for {amount_str} {symbol}...")
+    # 5. Place market sell order with animation
+    print(f"📉 Placing market sell order for {amount_str} {symbol}...")
+    spinner("Submitting order", duration=1.2)
     try:
         result = submit_order(
             base_symbol=symbol,
             quote_symbol=quote,
-            side=0,              # sell
-            order_type=1,        # market
+            side=0,
+            order_type=1,
             amount=amount_str,
-            amount_coin_symbol=symbol   # amount is in base coin
+            amount_coin_symbol=symbol
         )
-        print("Order placed successfully.")
-        print(f"Order ID: {result.get('spot_order', {}).get('id')}")
-        print(f"Message: {result.get('message')}")
-
-        # 6. Wait 5 seconds for balance update
-        print("Waiting 5 seconds for balance update...")
-        time.sleep(5)
-
-        # 7. Show updated balance of the quote currency
-        quote_balance = get_asset_balance(quote)
-        print(f"Updated {quote} balance: {quote_balance}")
-
+        print("🎉 Order placed successfully!")
+        print(f"   Order ID : {result.get('spot_order', {}).get('id')}")
+        print(f"   Message  : {result.get('message')}")
     except Exception as e:
-        print(f"Error during sell: {e}")
+        print(f"❌ Error during sell: {e}")
+        return
+
+    # 6. Countdown while waiting for balance update
+    print("\n⏳ Waiting 5 seconds for balance update...")
+    for i in range(5, 0, -1):
+        sys.stdout.write(f"\r   {i} seconds remaining... ")
+        sys.stdout.flush()
+        time.sleep(1)
+    sys.stdout.write("\r" + " " * 30 + "\r")  # clear line
+
+    # 7. Show updated quote balance
+    try:
+        spinner("Fetching new balance", duration=0.7)
+        quote_balance = get_asset_balance(quote)
+    except Exception as e:
+        print(f"❌ Could not fetch updated balance: {e}")
+        return
+    print(f"💵 Updated {quote} balance: {quote_balance}")
 
 
 if __name__ == "__main__":
