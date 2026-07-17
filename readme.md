@@ -55,23 +55,23 @@ This is a **perpetual spot trading bot** that automatically buys and sells a giv
 ```mermaid
 flowchart TD
     A([Start]) --> B[Initial Market Buy 15 USDT]
-    B --> C[Hold & Wait for +1.75% Profit]
+    B --> C[Hold Until Profit Target +1.75%]
 
-    C -->|Price reaches target| D[Market Sell All Coins]
+    C -->|Target reached| D[Market Sell All Coins]
 
-    D --> E[Wait for Drop (-0.5%) or Pump (+0.25%)]
-
-    E -->|Drop triggered| F[Buy 15 USDT]
-    E -->|Pump triggered| G[Buy 7.5 USDT]
+    D --> E[Wait for Price Movement]
+    E -->|Price drops by 0.5%| F[Buy 15 USDT]
+    E -->|Price rises by 0.25%| G[Buy 7.5 USDT]
 
     F --> C
     G --> C
 
-    D -.->|On user interrupt| H[Place Limit Sell at Target Price<br/>Generate Report]
-    C -.->|On user interrupt| H
-    E -.->|On user interrupt| H
+    C -.->|User interrupt| H[Place Limit Sell]
+    D -.->|User interrupt| H
+    E -.->|User interrupt| H
 
-    H --> I([End])
+    H --> J[Generate Final Report]
+    J --> I([End])
 ```
 
 ---
