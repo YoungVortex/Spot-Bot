@@ -1,0 +1,214 @@
+name: Typo Checker & Auto-Fix
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '**.py'
+      - '**.js'
+      - '**.ts'
+      - '**.md'
+      - '**.txt'
+      - '**.yml'
+      - '**.yaml'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  typo-check:
+    name: Check Typos & Auto-Fix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install codespell
+        run: pip install codespell
+
+      - name: Run codespell
+        id: codespell
+        run: |
+          echo "=== Running codespell ==="
+
+          # Run codespell and capture output
+          codespell --write-changes \
+            --skip=".git,*.json,node_modules,__pycache__,*.pyc,Change-log/*" \
+            --ignore-words-list="hel,teh,ths,fo,ist,ot,nd,sto,ect,ore,ser,accout,perpet,perpetuel,btc" \
+            2>&1 | tee codespell-output.txt || true
+
+          # Check if codespell made any changes
+          CHANGES=$(git diff --name-only 2>/dev/null || echo "")
+
+          if [ -n "$CHANGES" ]; then
+            echo "typos_found=true" >> "$GITHUB_OUTPUT"
+            echo "Changed files:"
+            echo "$CHANGES"
+
+            # Show the actual changes
+            echo ""
+            echo "=== Typo fixes applied ==="
+            git diff --stat
+            echo ""
+            echo "=== Detailed diff ==="
+            git diff
+          else
+            echo "typos_found=false" >> "$GITHUB_OUTPUT"
+            echo "No typos found!"
+          fi
+
+      - name: Get latest changelog version
+        if: steps.codespell.outputs.typos_found == 'true'
+        id: version
+        run: |
+          # Get the latest changelog file and increment version
+          LATEST=$(ls -1 Change-log/*.log 2>/dev/null | sort -V | tail -1 || echo "")
+
+          if [ -n "$LATEST" ]; then
+            # Extract version number (e.g., 1.02.5 from 1.02.5.log)
+            VER=$(basename "$LATEST" .log)
+            MAJOR=$(echo "$VER" | cut -d. -f1)
+            MINOR=$(echo "$VER" | cut -d. -f2)
+            PATCH=$(echo "$VER" | cut -d. -f3)
+
+            # Increment patch
+            NEW_PATCH=$((PATCH + 1))
+            NEW_VER="${MAJOR}.${MINOR}.${NEW_PATCH}"
+
+            # If patch exceeds 99, increment minor
+            if [ "$NEW_PATCH" -gt 99 ]; then
+              NEW_MINOR=$((MINOR + 1))
+              NEW_PATCH=0
+              NEW_VER="${MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
+            fi
+
+            # If minor exceeds 99, increment major
+            if [ "$NEW_MINOR" -gt 99 ]; then
+              NEW_MAJOR=$((MAJOR + 1))
+              NEW_MINOR=0
+              NEW_PATCH=0
+              NEW_VER="${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
+            fi
+          else
+            NEW_VER="1.00.1"
+          fi
+
+          echo "new_version=$NEW_VER" >> "$GITHUB_OUTPUT"
+          echo "New changelog version: $NEW_VER"
+
+      - name: Get commit info
+        if: steps.codespell.outputs.typos_found == 'true'
+        id: info
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s" || echo "Typo fix")
+          AUTHOR=$(git log -1 --pretty=format:"%an" || echo "GitHub Actions")
+          COMMIT_TIME=$(date +"%m/%d/%Y")
+          COMMIT_CLOCK=$(date +"%I:%M %p")
+
+          echo "commit_msg=$COMMIT_MSG" >> "$GITHUB_OUTPUT"
+          echo "author=$AUTHOR" >> "$GITHUB_OUTPUT"
+          echo "commit_time=$COMMIT_TIME" >> "$GITHUB_OUTPUT"
+          echo "commit_clock=$COMMIT_CLOCK" >> "$GITHUB_OUTPUT"
+
+      - name: Create changelog file
+        if: steps.codespell.outputs.typos_found == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.new_version }}"
+          CHANGES=$(git diff --name-only)
+
+          # Count how many files changed
+          FILE_COUNT=$(echo "$CHANGES" | wc -l | tr -d ' ')
+
+          # Get the list of fixed files
+          FILE_LIST=""
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              FILE_LIST="${FILE_LIST}    - ${file}\n"
+            fi
+          done <<< "$CHANGES"
+
+          # Create the changelog file
+          cat > "Change-log/${VERSION}.log" << EOF
+          Typo fixes in code and documentation :
+          $(echo -e "$FILE_LIST")
+          Date Start : [${{ steps.info.outputs.commit_time }}]
+          Commit Time : ${{ steps.info.outputs.commit_clock }}
+          EOF
+
+          echo "Created Change-log/${VERSION}.log"
+          cat "Change-log/${VERSION}.log"
+
+      - name: Create PR with fixes
+        if: steps.codespell.outputs.typos_found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.new_version }}"
+          BRANCH="typo-fix-${VERSION}"
+
+          # Create a new branch
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+
+          # Stage all changes
+          git add -A
+          git commit -m "fix: auto-correct typos (v${VERSION})"
+
+          # Push branch
+          git push origin "$BRANCH"
+
+          # Create PR
+          CHANGED_FILES=$(git diff --name-only main...HEAD 2>/dev/null || git diff --name-only HEAD~1)
+          FILE_COUNT=$(echo "$CHANGED_FILES" | wc -l | tr -d ' ')
+
+          gh pr create \
+            --title "fix: Auto-correct typos (v${VERSION})" \
+            --body "## Automated Typo Fix
+
+          This PR was automatically generated by the typo-checker workflow.
+
+          ### Changes
+          - Fixed typos in **${FILE_COUNT}** file(s)
+          - Created changelog: \`Change-log/${VERSION}.log\`
+
+          ### Files modified:
+          \`\`\`
+          ${CHANGED_FILES}
+          \`\`\`
+
+          ### What was checked
+          - Code files (.py, .js, .ts)
+          - Documentation (.md, .txt)
+          - Configuration (.yml, .yaml)
+
+          ---
+          *This PR was created automatically. Review the changes before merging.*" \
+            --base main \
+            --head "$BRANCH" || echo "PR creation failed or already exists"
+
+          echo ""
+          echo "============================================"
+          echo "  TYPO CHECK COMPLETE"
+          echo "  Version: ${VERSION}"
+          echo "  Files fixed: ${FILE_COUNT}"
+          echo "  PR created: ${BRANCH}"
+          echo "============================================"
+
+      - name: No typos found
+        if: steps.codespell.outputs.typos_found == 'false'
+        run: |
+          echo ""
+          echo "============================================"
+          echo "  NO TYPOS FOUND"
+          echo "============================================"
+          echo ""
+          echo "All code and documentation are clean."
