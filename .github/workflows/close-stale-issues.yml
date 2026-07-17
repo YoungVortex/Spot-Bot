@@ -26,8 +26,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const days = parseInt('${{ github.event.inputs.days || 30 }}');
-            const label = '${{ github.event.inputs.label || stale }}';
+            const days = parseInt('${{ github.event.inputs.days }}' || '30');
+            const label = '${{ github.event.inputs.label }}' || 'stale';
             const cutoff = new Date();
             cutoff.setDate(cutoff.getDate() - days);
 
