@@ -4,6 +4,7 @@ trade.json
 codespell-output.txt
 /note
 bot/bi24/Note/
-demo/trade_report.html
-demo/balance_chart.png
-bot/bi24/trade-1405-04-27.json
+trade_report.html
+balance_chart.png
+trade-1405-04-27.json
+trade-1405-04-28.json
