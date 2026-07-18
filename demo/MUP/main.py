@@ -14,16 +14,22 @@ else:
     for i in range(1, grids + 1):
         level = price + (i - 1) * step
         
-        # Check if this is the middle grid
-        if i - 1 == middle_index:
-            # Format output: integer or with 2 decimals
+        # Determine if BUY, SELL, or no buy or sell
+        if i - 1 < middle_index:
+            # Grids BEFORE middle are BUY
+            if level.is_integer():
+                print(f"grid {i} : {int(level)} (BUY)")
+            else:
+                print(f"grid {i} : {level:.2f} (BUY)")
+        elif i - 1 == middle_index:
+            # Middle grid is no buy or sell
             if level.is_integer():
                 print(f"grid {i} : {int(level)} (no buy or sell)")
             else:
                 print(f"grid {i} : {level:.2f} (no buy or sell)")
         else:
-            # Format output for regular grids
+            # Grids AFTER middle are SELL
             if level.is_integer():
-                print(f"grid {i} : {int(level)}")
+                print(f"grid {i} : {int(level)} (SELL)")
             else:
-                print(f"grid {i} : {level:.2f}")
+                print(f"grid {i} : {level:.2f} (SELL)")
