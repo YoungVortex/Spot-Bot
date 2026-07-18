@@ -1,7 +1,7 @@
 # Ask user for inputs
 price = float(input("Input a Price : "))
 grids = int(input("Input a How many Grid you want : "))
-grid_percent = float(input("Input a gird % : "))
+grid_percent = float(input("Input a grid % : "))
 
 # Validate that number of grids is odd
 if grids % 2 == 0:
