@@ -11,6 +11,7 @@ add 12 GitHub workflows :
     auto-assign-reviewers.yml
     issue-template-validator.yml
     dependency-review.yml
+    branch-sync-bot.yml
 
 Date Start : [7/17/2026]
 Commit Time : 9:15 PM
